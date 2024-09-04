@@ -16,13 +16,12 @@ function Login({ navigation }) {
         password: password,
       };
 
-      const response = await axios.post('http://172.20.10.3:8080/login', UserLogin);
+      const response = await axios.post('http://192.168.2.17:8080/login', UserLogin);
 
-      if (response.status === 200) {
-        Alert.alert('Success', 'Login successfully!');
-        navigation.navigate('Login');
+      if (response.data) { // Assuming the response.data is a boolean indicating success
+        navigation.navigate('OtpVerification', { email: email });
       } else {
-        Alert.alert('Error', 'Something went wrong. Please try again.');
+        Alert.alert('Error', 'Invalid credentials. Please try again.');
       }
     } catch (error) {
       // Handle the error
@@ -55,23 +54,25 @@ function Login({ navigation }) {
       <TouchableOpacity onPress={() => navigation.navigate('Homepage')}>
         <Text style={styles.linkText}>Don't have an account? Sign up</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.navigate('ForgetPassword')}>
+        <Text style={styles.linkText}>Forget password</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 function Homepage({ navigation }) {
-  const [username, setUserName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const handleSignUp = async () => {
     try {
       const User = {
-        username: username,
         email: email,
         password: password,
       };
 
-      const response = await axios.post('http://172.20.10.3:8080/register', User);
+      const response = await axios.post('http://192.168.2.17:8080/register', User);
 
       if (response.status === 200) {
         Alert.alert('Success', 'Account created successfully!');
@@ -89,12 +90,7 @@ function Homepage({ navigation }) {
       <Text style={styles.title}>Create an account</Text>
       <Text style={styles.subtitle}>Start making your dreams come true</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Name"
-        value={username}
-        onChangeText={setUserName}
-      />
+
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -109,6 +105,11 @@ function Homepage({ navigation }) {
         onChangeText={setPassword}
         secureTextEntry
       />
+      <TextInput
+        style={styles.input}
+        placeholder="Repeat password"
+
+      />
 
       <TouchableOpacity style={styles.button} onPress={handleSignUp}>
         <Text style={styles.buttonText}>Create account</Text>
@@ -117,6 +118,101 @@ function Homepage({ navigation }) {
       <TouchableOpacity style={styles.googleButton} onPress={() => alert('Sign up with Google')}>
         <Text style={styles.googleButtonText}>Sign up with Google</Text>
       </TouchableOpacity>
+    </View>
+  );
+}
+
+function ForgetPassword({ navigation }) {
+  const [email, setEmail] = useState('');
+
+  const handleSendOtp = async () => {
+    try {
+      const response = await axios.post('http://192.168.2.17:8080/forgotPassword', null, {
+        params: { email: email }
+      });
+
+      if (response.status === 200) {
+        Alert.alert('Success', 'OTP sent to your email.');
+        navigation.navigate('OtpVerification', { email: email });
+      } else {
+        Alert.alert('Error', 'Failed to send OTP. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Failed to send OTP', error.message || 'An unexpected error occurred.');
+    }
+  };
+
+  return (
+    <View style={styles.formContainer}>
+      <Text style={styles.title}>Forgot Password</Text>
+      <Text style={styles.subtitle}>Enter your email to receive an OTP</Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+      />
+
+      <TouchableOpacity style={styles.button} onPress={handleSendOtp}>
+        <Text style={styles.buttonText}>Send OTP</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+
+function OtpVerification({ route, navigation }) {
+  const [otp, setOtp] = useState('');
+  const { email } = route.params;
+
+  const handleOtpSubmit = async () => {
+    try {
+      const OTPLogin = {
+        otp: otp,
+        email: email,
+      };
+      const response = await axios.post('http://192.168.2.17:8080/verifyOTP', OTPLogin);
+
+      if (response.data) { // Assuming the response.data is a boolean indicating success
+        Alert.alert('Success', 'Login successfully!');
+        navigation.navigate('HelloWorld');
+
+      } else {
+        Alert.alert('Error', 'Invalid credentials. Please try again.');
+      }
+    } catch (error) {
+      // Handle the error
+      Alert.alert('Failed to login', error.message || 'An unexpected error occurred.');
+    }
+  };
+
+
+  return (
+    <View style={styles.formContainer}>
+      <Text style={styles.title}>Enter OTP</Text>
+      <Text style={styles.subtitle}>Please enter the OTP sent to your email</Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="OTP"
+        value={otp}
+        onChangeText={setOtp}
+        keyboardType="numeric"
+      />
+
+      <TouchableOpacity style={styles.button} onPress={handleOtpSubmit}>
+        <Text style={styles.buttonText}>Verify OTP</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function HelloWorld() {
+  return (
+    <View style={styles.formContainer}>
+      <Text style={styles.title}>Hello World!</Text>
     </View>
   );
 }
@@ -138,10 +234,16 @@ export default function App() {
             ),
           })}
         />
+        <Stack.Screen name="OtpVerification" component={OtpVerification} />
+        <Stack.Screen name="HelloWorld" component={HelloWorld} />
+        <Stack.Screen name="ForgetPassword" component={ForgetPassword} options={{ title: 'Forgot Password' }} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   formContainer: {
