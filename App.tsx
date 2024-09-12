@@ -5,10 +5,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import axios from 'axios';
 
 const Stack = createNativeStackNavigator();
-
 function Login({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
   const handleLogin = async () => {
     try {
       const UserLogin = {
@@ -18,10 +18,18 @@ function Login({ navigation }) {
 
       const response = await axios.post('http://192.168.2.17:8080/login', UserLogin);
 
-      if (response.data) { // Assuming the response.data is a boolean indicating success
-        navigation.navigate('OtpVerification', { email: email });
+      if (response.data && response.data.statusCode === 200) {
+        // Extract accessToken from response
+        const { accessToken } = response.data.data;
+
+        // Store the accessToken (e.g., in localStorage, AsyncStorage, or context)
+        // Here we'll just log it for demonstration
+        console.log('Access Token:', accessToken);
+
+        // Navigate to OTP Verification screen
+        navigation.navigate('OtpVerification', { email: email, accessToken: accessToken });
       } else {
-        Alert.alert('Error', 'Invalid credentials. Please try again.');
+        Alert.alert('Error', response.data.message || 'Invalid credentials. Please try again.');
       }
     } catch (error) {
       // Handle the error
@@ -165,7 +173,7 @@ function ForgetPassword({ navigation }) {
 
 function OtpVerification({ route, navigation }) {
   const [otp, setOtp] = useState('');
-  const { email } = route.params;
+  const { email, accessToken } = route.params;
 
   const handleOtpSubmit = async () => {
     try {
@@ -173,18 +181,26 @@ function OtpVerification({ route, navigation }) {
         otp: otp,
         email: email,
       };
-      const response = await axios.post('http://192.168.2.17:8080/verifyOTP', OTPLogin);
 
-      if (response.data) { // Assuming the response.data is a boolean indicating success
-        Alert.alert('Success', 'Login successfully!');
-        navigation.navigate('HelloWorld');
+      const response = await axios.post('http://192.168.2.17:8080/verifyOTP', OTPLogin, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
+      if (response.data && response.data.statusCode === 200) {
+        if (response.data.data) { // Check if data is true
+          Alert.alert('Success', 'Login successfully!');
+          navigation.navigate('HelloWorld');
+        } else {
+          Alert.alert('Error', 'Invalid OTP. Please try again.');
+        }
       } else {
-        Alert.alert('Error', 'Invalid credentials. Please try again.');
+        Alert.alert('Error', response.data.message || 'Invalid OTP. Please try again.');
       }
     } catch (error) {
       // Handle the error
-      Alert.alert('Failed to login', error.message || 'An unexpected error occurred.');
+      Alert.alert('Failed to verify OTP', error.message || 'An unexpected error occurred.');
     }
   };
 
